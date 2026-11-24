@@ -66,6 +66,14 @@ export class ExpenseService {
     return this.settlementServ.calculate(expenses, members);
   }
 
+  async updateExpense(
+    expenseId: string,
+    data: { amount?: number; title?: string; paidBy?: string; splitAmong?: 'All' | string[] }
+  ): Promise<IExpenseDocument | null> {
+    console.log(`[ExpenseService] Updating expense ${expenseId}`);
+    return await this.expenseRepo.update(expenseId, data);
+  }
+
   async deleteExpense(expenseId: string): Promise<boolean> {
     console.log(`[ExpenseService] Deleting expense ${expenseId}`);
     return await this.expenseRepo.delete(expenseId);

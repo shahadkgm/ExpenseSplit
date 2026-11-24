@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Calendar, User, Receipt, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, Calendar, User, Receipt, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { IExpense, IGroup } from '../types';
 
 interface ExpenseTableProps {
   expenses: IExpense[];
   group: IGroup;
   onDeleteExpense: (id: string) => void;
+  onEditExpense?: (expense: IExpense) => void;
   currencySymbol: string;
 }
 
@@ -13,6 +14,7 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
   expenses,
   group,
   onDeleteExpense,
+  onEditExpense,
   currencySymbol,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,7 +26,7 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
   const isAll = pageSize === 0;
   const totalPages = isAll ? 1 : Math.max(1, Math.ceil(expenses.length / pageSize));
 
-  // Reset to valid page when expenses list changes (e.g. deletion, group change)
+  // Reset to valid page when expenses list changes
   useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
@@ -41,7 +43,6 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
       return d.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
-        year: 'numeric',
       });
     } catch {
       return dateStr;
@@ -51,30 +52,32 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
       {/* Header with Title and Records info */}
-      <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Receipt className="w-5 h-5 text-indigo-600" />
-          <h3 className="font-bold text-base text-slate-900">Group Expenses</h3>
-          <span className="text-xs bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">
-            {expenses.length} records
+      <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Receipt className="w-5 h-5 text-indigo-600 shrink-0" />
+          <h3 className="font-bold text-sm sm:text-base text-slate-900 truncate">
+            Group Expenses
+          </h3>
+          <span className="text-[11px] sm:text-xs bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full shrink-0">
+            {expenses.length}
           </span>
         </div>
 
         {/* Rows per page selector */}
         {expenses.length > 0 && (
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-            <span>Show:</span>
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 shrink-0">
+            <span className="hidden sm:inline">Show:</span>
             <select
               value={pageSize}
               onChange={(e) => {
                 setPageSize(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >
-              <option value={5}>5 per page</option>
-              <option value={10}>10 per page</option>
-              <option value={20}>20 per page</option>
+              <option value={5}>5 / page</option>
+              <option value={10}>10 / page</option>
+              <option value={20}>20 / page</option>
               <option value={0}>All</option>
             </select>
           </div>
@@ -82,18 +85,108 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
       </div>
 
       {expenses.length === 0 ? (
-        <div className="py-12 text-center">
+        <div className="py-10 sm:py-12 px-4 text-center">
           <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
             <Receipt className="w-6 h-6" />
           </div>
           <p className="text-sm font-semibold text-slate-700">No expenses recorded yet</p>
-          <p className="text-xs text-slate-400 mt-1">
-            Click "Add New Expense" above to record your group spendings.
+          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+            Use the form above or tap "Add Expense" to record spending.
           </p>
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
+          {/* ======================================================== */}
+          {/* MOBILE VIEW (< md): Touch-first Card List                  */}
+          {/* ======================================================== */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {currentExpenses.map((exp) => {
+              const isSplitAll = exp.splitAmong === 'All' || !Array.isArray(exp.splitAmong);
+              const splitCount = isSplitAll
+                ? group.members.length
+                : exp.splitAmong.length;
+              const perPersonCost = exp.amount / Math.max(splitCount, 1);
+
+              return (
+                <div key={exp._id} className="p-3.5 hover:bg-slate-50/70 transition-colors">
+                  {/* Top row: Title and Amount */}
+                  <div className="flex items-start justify-between gap-3 mb-1.5">
+                    <div className="font-bold text-slate-900 text-sm leading-snug break-words flex-1">
+                      {exp.title}
+                    </div>
+                    <div className="font-extrabold text-indigo-600 text-base shrink-0">
+                      {currencySymbol}
+                      {exp.amount.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Middle row: Paid by, Date, and Share */}
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 mb-2">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-semibold text-[11px]">
+                      <User className="w-3 h-3" />
+                      {exp.paidBy}
+                    </span>
+                    <span>&bull;</span>
+                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+                      <Calendar className="w-3 h-3" />
+                      {formatDate(exp.createdAt)}
+                    </span>
+                    <span>&bull;</span>
+                    <span className="text-[11px] font-semibold text-slate-700">
+                      {currencySymbol}{perPersonCost.toFixed(2)}/person
+                    </span>
+                  </div>
+
+                  {/* Bottom row: Split target & Actions */}
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-100/60">
+                    <span className="truncate max-w-[200px]">
+                      {isSplitAll
+                        ? `Split equally (${splitCount} members)`
+                        : `Split: ${Array.isArray(exp.splitAmong) ? exp.splitAmong.join(', ') : exp.splitAmong}`}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {onEditExpense && (
+                        <button
+                          onClick={() => onEditExpense(exp)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 active:scale-90 rounded-lg hover:bg-indigo-50 transition-colors"
+                          title="Edit expense amount"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onDeleteExpense(exp._id)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 active:scale-90 rounded-lg hover:bg-red-50 transition-colors"
+                        title="Delete expense"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Mobile Footer with Total Spend */}
+            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between font-bold text-xs">
+              <span className="text-slate-600 uppercase tracking-wider">Total Spend</span>
+              <span className="text-indigo-600 text-base">
+                {currencySymbol}
+                {totalSpend.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+            </div>
+          </div>
+
+          {/* ======================================================== */}
+          {/* DESKTOP/TABLET VIEW (>= md): Classic Full Table          */}
+          {/* ======================================================== */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50/70 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
                 <tr>
@@ -148,13 +241,24 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
                         </span>
                       </td>
                       <td className="py-3.5 px-6 text-center">
-                        <button
-                          onClick={() => onDeleteExpense(exp._id)}
-                          title="Delete expense"
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          {onEditExpense && (
+                            <button
+                              onClick={() => onEditExpense(exp)}
+                              title="Edit expense amount"
+                              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => onDeleteExpense(exp._id)}
+                            title="Delete expense"
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -180,19 +284,19 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
 
           {/* Pagination Controls */}
           {expenses.length > 0 && !isAll && totalPages > 1 && (
-            <div className="px-6 py-3.5 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <div className="text-slate-500 font-medium">
-                Showing <span className="font-bold text-slate-700">{startIndex + 1}</span> to{' '}
+            <div className="px-4 sm:px-6 py-3 bg-slate-50/70 border-t border-slate-100 flex flex-col xs:flex-row items-center justify-between gap-2.5 text-xs">
+              <div className="text-slate-500 font-medium text-[11px] sm:text-xs">
+                Showing <span className="font-bold text-slate-700">{startIndex + 1}</span>-
                 <span className="font-bold text-slate-700">{endIndex}</span> of{' '}
-                <span className="font-bold text-slate-700">{expenses.length}</span> expenses
+                <span className="font-bold text-slate-700">{expenses.length}</span>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-0.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   <span>Prev</span>
@@ -204,7 +308,7 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
                       key={pageNum}
                       type="button"
                       onClick={() => setCurrentPage(pageNum)}
-                      className={`min-w-[30px] h-[30px] rounded-lg font-bold text-xs transition-all ${
+                      className={`min-w-[28px] h-[28px] rounded-lg font-bold text-xs transition-all ${
                         currentPage === pageNum
                           ? 'bg-indigo-600 text-white shadow-xs'
                           : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -219,7 +323,7 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
                   type="button"
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-0.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs"
                 >
                   <span>Next</span>
                   <ChevronRight className="w-3.5 h-3.5" />

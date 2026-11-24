@@ -81,6 +81,37 @@ export class ExpenseController {
     }
   }
 
+  async updateExpense(req: Request, res: Response) {
+    try {
+      const { expenseId } = req.params;
+      const { amount, title, paidBy, splitAmong } = req.body;
+
+      if (amount !== undefined && (isNaN(Number(amount)) || Number(amount) <= 0)) {
+        return res.status(400).json({ success: false, message: 'Amount must be greater than 0' });
+      }
+
+      const updateData: any = {};
+      if (amount !== undefined) updateData.amount = Number(amount);
+      if (title !== undefined) updateData.title = String(title).trim();
+      if (paidBy !== undefined) updateData.paidBy = String(paidBy).trim();
+      if (splitAmong !== undefined) updateData.splitAmong = splitAmong;
+
+      const updated = await expenseService.updateExpense(expenseId, updateData);
+      if (!updated) {
+        return res.status(404).json({ success: false, message: 'Expense not found' });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Expense updated successfully',
+        data: updated,
+      });
+    } catch (err: any) {
+      console.error('[ExpenseController] updateExpense error:', err);
+      return res.status(500).json({ success: false, message: err.message || 'Server error' });
+    }
+  }
+
   async deleteExpense(req: Request, res: Response) {
     try {
       const { expenseId } = req.params;

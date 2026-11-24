@@ -61,6 +61,14 @@ export class ExpenseRepository {
     return await this._model.findById(expenseId);
   }
 
+  async update(expenseId: string, data: any): Promise<IExpenseDocument | null> {
+    return await this._model.findByIdAndUpdate(
+      expenseId,
+      { $set: data },
+      { new: true, runValidators: true }
+    );
+  }
+
   async delete(expenseId: string): Promise<boolean> {
     const res = await this._model.findByIdAndDelete(expenseId);
     return !!res;

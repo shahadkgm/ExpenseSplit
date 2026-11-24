@@ -29,6 +29,14 @@ export const expenseService = {
     return response.data.data;
   },
 
+  async updateExpense(
+    expenseId: string,
+    data: { amount?: number; title?: string; paidBy?: string; splitAmong?: 'All' | string[] }
+  ): Promise<IExpense> {
+    const response = await api.put(`/api/expenses/${expenseId}`, data);
+    return response.data.data;
+  },
+
   async deleteExpense(expenseId: string) {
     const response = await api.delete(`/api/expenses/${expenseId}`);
     return response.data;
