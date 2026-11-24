@@ -35,6 +35,24 @@ export class ExpenseController {
       if (!id) {
         return res.status(400).json({ success: false, message: 'tripId or groupId required' });
       }
+
+      const pageQuery = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limitQuery = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+
+      if (pageQuery !== undefined && limitQuery !== undefined && !isNaN(pageQuery) && !isNaN(limitQuery)) {
+        const result = await expenseService.getExpensesByGroupIdPaginated(id, pageQuery, limitQuery);
+        return res.status(200).json({
+          success: true,
+          data: result.expenses,
+          pagination: {
+            total: result.total,
+            page: result.page,
+            limit: result.limit,
+            totalPages: result.totalPages,
+          },
+        });
+      }
+
       const expenses = await expenseService.getExpensesByGroupId(id);
       return res.status(200).json({
         success: true,

@@ -21,6 +21,38 @@ export class ExpenseRepository {
       .sort({ createdAt: -1 });
   }
 
+  async findByGroupIdPaginated(
+    groupId: string,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{ expenses: IExpenseDocument[]; total: number; page: number; limit: number; totalPages: number }> {
+    const query = {
+      $or: [
+        { groupId: new Types.ObjectId(groupId) },
+        { tripId: new Types.ObjectId(groupId) },
+      ],
+    };
+
+    const total = await this._model.countDocuments(query);
+    const validPage = Math.max(1, page);
+    const validLimit = Math.max(1, limit);
+    const totalPages = Math.max(1, Math.ceil(total / validLimit));
+
+    const expenses = await this._model
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip((validPage - 1) * validLimit)
+      .limit(validLimit);
+
+    return {
+      expenses,
+      total,
+      page: validPage,
+      limit: validLimit,
+      totalPages,
+    };
+  }
+
   async findByTripId(tripId: string): Promise<IExpenseDocument[]> {
     return this.findByGroupId(tripId);
   }

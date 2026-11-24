@@ -1,5 +1,5 @@
-import React from 'react';
-import { Trash2, Calendar, User, Users, Receipt } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Trash2, Calendar, User, Receipt, ChevronLeft, ChevronRight } from 'lucide-react';
 import { IExpense, IGroup } from '../types';
 
 interface ExpenseTableProps {
@@ -15,7 +15,25 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
   onDeleteExpense,
   currencySymbol,
 }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(5);
+
   const totalSpend = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+
+  // Calculate pagination limits
+  const isAll = pageSize === 0;
+  const totalPages = isAll ? 1 : Math.max(1, Math.ceil(expenses.length / pageSize));
+
+  // Reset to valid page when expenses list changes (e.g. deletion, group change)
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [expenses.length, totalPages, currentPage]);
+
+  const startIndex = isAll ? 0 : (currentPage - 1) * pageSize;
+  const endIndex = isAll ? expenses.length : Math.min(startIndex + pageSize, expenses.length);
+  const currentExpenses = expenses.slice(startIndex, endIndex);
 
   const formatDate = (dateStr: string) => {
     try {
@@ -32,7 +50,8 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      {/* Header with Title and Records info */}
+      <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Receipt className="w-5 h-5 text-indigo-600" />
           <h3 className="font-bold text-base text-slate-900">Group Expenses</h3>
@@ -40,6 +59,26 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
             {expenses.length} records
           </span>
         </div>
+
+        {/* Rows per page selector */}
+        {expenses.length > 0 && (
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+            <span>Show:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+            >
+              <option value={5}>5 per page</option>
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={0}>All</option>
+            </select>
+          </div>
+        )}
       </div>
 
       {expenses.length === 0 ? (
@@ -53,90 +92,142 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50/70 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
-              <tr>
-                <th className="py-3.5 px-6">Expense Title & Date</th>
-                <th className="py-3.5 px-6">Paid By</th>
-                <th className="py-3.5 px-6">Split (Share)</th>
-                <th className="py-3.5 px-6 text-right">Amount</th>
-                <th className="py-3.5 px-6 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {expenses.map((exp) => {
-                const isAll = exp.splitAmong === 'All' || !Array.isArray(exp.splitAmong);
-                const splitCount = isAll
-                  ? group.members.length
-                  : exp.splitAmong.length;
-                const perPersonCost = exp.amount / Math.max(splitCount, 1);
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50/70 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <tr>
+                  <th className="py-3.5 px-6">Expense Title & Date</th>
+                  <th className="py-3.5 px-6">Paid By</th>
+                  <th className="py-3.5 px-6">Split (Share)</th>
+                  <th className="py-3.5 px-6 text-right">Amount</th>
+                  <th className="py-3.5 px-6 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {currentExpenses.map((exp) => {
+                  const isSplitAll = exp.splitAmong === 'All' || !Array.isArray(exp.splitAmong);
+                  const splitCount = isSplitAll
+                    ? group.members.length
+                    : exp.splitAmong.length;
+                  const perPersonCost = exp.amount / Math.max(splitCount, 1);
 
-                return (
-                  <tr key={exp._id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-6">
-                      <div className="font-semibold text-slate-900">{exp.title}</div>
-                      <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                        <Calendar className="w-3 h-3" />
-                        {formatDate(exp.createdAt)}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-6">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                        <User className="w-3 h-3" />
-                        {exp.paidBy}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-6">
-                      <div className="text-xs font-semibold text-slate-700">
-                        {currencySymbol}
-                        {perPersonCost.toFixed(2)} / person
-                      </div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">
-                        {isAll
-                          ? `Split equally among all (${splitCount})`
-                          : `Split with: ${Array.isArray(exp.splitAmong) ? exp.splitAmong.join(', ') : exp.splitAmong}`}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-6 text-right">
-                      <span className="font-bold text-slate-900 text-base">
-                        {currencySymbol}
-                        {exp.amount.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-6 text-center">
-                      <button
-                        onClick={() => onDeleteExpense(exp._id)}
-                        title="Delete expense"
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot className="bg-slate-50/90 font-bold border-t border-slate-200">
-              <tr>
-                <td colSpan={3} className="py-3.5 px-6 text-slate-700">
-                  Total Group Spend
-                </td>
-                <td className="py-3.5 px-6 text-right text-indigo-700 text-base">
-                  {currencySymbol}
-                  {totalSpend.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+                  return (
+                    <tr key={exp._id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-6">
+                        <div className="font-semibold text-slate-900">{exp.title}</div>
+                        <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                          <Calendar className="w-3 h-3" />
+                          {formatDate(exp.createdAt)}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-6">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          <User className="w-3 h-3" />
+                          {exp.paidBy}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-6">
+                        <div className="text-xs font-semibold text-slate-700">
+                          {currencySymbol}
+                          {perPersonCost.toFixed(2)} / person
+                        </div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">
+                          {isSplitAll
+                            ? `Split equally among all (${splitCount})`
+                            : `Split with: ${Array.isArray(exp.splitAmong) ? exp.splitAmong.join(', ') : exp.splitAmong}`}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-6 text-right">
+                        <span className="font-bold text-slate-900 text-base">
+                          {currencySymbol}
+                          {exp.amount.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-6 text-center">
+                        <button
+                          onClick={() => onDeleteExpense(exp._id)}
+                          title="Delete expense"
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot className="bg-slate-50/90 font-bold border-t border-slate-200">
+                <tr>
+                  <td colSpan={3} className="py-3.5 px-6 text-slate-700">
+                    Total Group Spend
+                  </td>
+                  <td className="py-3.5 px-6 text-right text-indigo-700 text-base">
+                    {currencySymbol}
+                    {totalSpend.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* Pagination Controls */}
+          {expenses.length > 0 && !isAll && totalPages > 1 && (
+            <div className="px-6 py-3.5 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="text-slate-500 font-medium">
+                Showing <span className="font-bold text-slate-700">{startIndex + 1}</span> to{' '}
+                <span className="font-bold text-slate-700">{endIndex}</span> of{' '}
+                <span className="font-bold text-slate-700">{expenses.length}</span> expenses
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Prev</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`min-w-[30px] h-[30px] rounded-lg font-bold text-xs transition-all ${
+                        currentPage === pageNum
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

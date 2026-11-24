@@ -41,6 +41,11 @@ export class ExpenseService {
     return await this.expenseRepo.findByGroupId(groupId);
   }
 
+  async getExpensesByGroupIdPaginated(groupId: string, page: number = 1, limit: number = 10) {
+    console.log(`[ExpenseService] Fetching paginated expenses for group/trip ${groupId} (page ${page}, limit ${limit})`);
+    return await this.expenseRepo.findByGroupIdPaginated(groupId, page, limit);
+  }
+
   async getSettlementByGroupId(groupId: string): Promise<ISettlementResult> {
     const expenses = await this.expenseRepo.findByGroupId(groupId);
     const group = await this.groupRepo.findById(groupId);
