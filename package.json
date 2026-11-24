@@ -1,0 +1,15 @@
+{
+  "name": "spliteasy-expense-calculator",
+  "version": "1.0.0",
+  "description": "Full-stack decoupled expense calculator with debt simplification algorithm",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "build": "npm run build --prefix server && npm run build --prefix client",
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client",
+    "start": "node server/dist/server.js"
+  },
+  "keywords": ["expense-calculator", "bill-splitting", "react", "express", "mongodb", "typescript"],
+  "author": "",
+  "license": "MIT"
+}
