@@ -3,6 +3,7 @@ import { expenseService } from '../services/expense.service';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { CreateExpenseDTO } from '../dtos/expense.dto';
+import { expensesCreated, settlementsCalculated } from '../middleware/metrics.middleware';
 
 export class ExpenseController {
   async createExpense(req: Request, res: Response) {
@@ -18,6 +19,7 @@ export class ExpenseController {
       }
 
       const expense = await expenseService.createExpense(dto);
+      expensesCreated.inc();
       return res.status(201).json({
         success: true,
         message: 'Expense created successfully',
@@ -71,6 +73,7 @@ export class ExpenseController {
         return res.status(400).json({ success: false, message: 'tripId or groupId required' });
       }
       const settlement = await expenseService.getSettlementByGroupId(id);
+      settlementsCalculated.inc();
       return res.status(200).json({
         success: true,
         data: settlement,

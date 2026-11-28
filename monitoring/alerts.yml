@@ -1,0 +1,38 @@
+groups:
+  - name: spliteasy-alerts
+    rules:
+
+      # Alert when error rate > 5% over 5 minutes
+      - alert: HighErrorRate
+        expr: |
+          100 * sum(rate(spliteasy_http_errors_total[5m]))
+          / (sum(rate(spliteasy_http_requests_total[5m])) > 0) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP error rate on SplitEasy"
+          description: "Error rate is {{ $value | printf \"%.1f\" }}% (threshold: 5%)"
+
+      # Alert when P95 latency > 1 second
+      - alert: SlowEndpoints
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(spliteasy_http_request_duration_ms_bucket[5m])) by (le, route)
+          ) > 1000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow endpoint detected: {{ $labels.route }}"
+          description: "P95 latency for {{ $labels.route }} is {{ $value | printf \"%.0f\" }}ms (threshold: 1000ms)"
+
+      # Alert when any 5xx errors occur
+      - alert: ServerErrors
+        expr: sum(rate(spliteasy_http_errors_total{status_code=~"5.."}[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "5xx server errors occurring on SplitEasy"
+          description: "{{ $value | printf \"%.2f\" }} 5xx errors/sec on route {{ $labels.route }}"

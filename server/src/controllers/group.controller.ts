@@ -3,6 +3,7 @@ import { groupService } from '../services/group.service';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { CreateGroupDTO } from '../dtos/group.dto';
+import { groupsCreated } from '../middleware/metrics.middleware';
 
 export class GroupController {
   async createGroup(req: Request, res: Response) {
@@ -18,6 +19,7 @@ export class GroupController {
       }
 
       const group = await groupService.createGroup(dto);
+      groupsCreated.inc();
       return res.status(201).json({
         success: true,
         message: 'Group created successfully',

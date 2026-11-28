@@ -7,6 +7,7 @@ import expenseRoutes from './routes/expense.routes';
 import groupRoutes from './routes/group.routes';
 import authRoutes from './routes/auth.routes';
 import path from 'path';
+import { metricsMiddleware, register } from './middleware/metrics.middleware';
 
 // Load .env from server directory or root directory
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -22,6 +23,9 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// ── Metrics middleware (before all routes) ───────────────────────────────────
+app.use(metricsMiddleware);
 
 // Request logging middleware
 app.use((req, _res, next) => {
@@ -41,6 +45,16 @@ app.get('/api/health', (_req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     service: 'Expense Calculator API',
   });
+});
+
+// ── Prometheus metrics endpoint ──────────────────────────────────────────────
+app.get('/metrics', async (_req: Request, res: Response) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(err);
+  }
 });
 
 // Serve frontend production build if available
